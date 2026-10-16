@@ -1,0 +1,500 @@
+:root {
+  --font-size: 16px;
+  --theme-black: #000000;
+  --theme-white: #ffffff;
+  --background: #f9f8f7;
+  --foreground: oklch(0.145 0 0);
+  --card: #f5f4f2;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #030213;
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.95 0.0058 264.53);
+  --secondary-foreground: #030213;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #e9ebef;
+  --accent-foreground: #030213;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #030213;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* ─── CareerCase editorial tokens (Phase 1 — additive, newsprint identity) ───
+   * These sit ALONGSIDE the existing shadcn tokens above. The red accent is
+   * deliberately named --accent-news so it never overrides the neutral
+   * shadcn --accent used across existing components. */
+  --ink: #0a0a0a;            /* never pure #000 for large fills */
+  --paper: #f9f8f6;          /* app background surface */
+  --paper-raised: #ffffff;   /* cards */
+  --ink-soft: #4a4a4a;       /* secondary text */
+  --ink-faint: #666662;      /* accessible metadata and captions */
+  --rule: #0a0a0a;           /* hairline borders */
+  --accent-news: #e63946;    /* the ONE red accent — breaking-news red */
+  --accent-soft: #ffd166;    /* rare highlight (marks, highlighter strokes) */
+  --shadow-hard: 4px 4px 0px var(--ink);
+  --shadow-hard-sm: 2px 2px 0px var(--ink);
+  --radius-sketch: 255px 15px 225px 15px / 15px 225px 15px 255px;
+}
+
+@theme inline {
+  --color-black: var(--theme-black);
+  --color-white: var(--theme-white);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Expose editorial tokens as Tailwind colors too (bg-ink, text-paper, etc.) */
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-accent-news: var(--accent-news);
+  --color-accent-soft: var(--accent-soft);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Multi-layer newsprint texture — fine grain + coarse fibres + crumple gradients + vignette */
+    background-color: var(--background);
+    background-image:
+      /* Fine newsprint grain — tight & dense */
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)' opacity='0.26'/%3E%3C/svg%3E"),
+      /* Coarse paper fibres — long strands */
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.08 0.25' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='500' height='500' filter='url(%23c)' opacity='0.15'/%3E%3C/svg%3E"),
+      /* Primary crumple crease — top-left highlight */
+      linear-gradient(127deg, rgba(255,255,255,0.30) 0%, transparent 35%),
+      /* Primary crumple shadow — bottom-right */
+      linear-gradient(307deg, rgba(0,0,0,0.09) 0%, transparent 38%),
+      /* Secondary crumple — mid-page diagonal */
+      linear-gradient(155deg, transparent 30%, rgba(255,255,255,0.12) 42%, rgba(0,0,0,0.04) 48%, transparent 58%),
+      /* Tertiary crumple — opposing angle */
+      linear-gradient(235deg, transparent 35%, rgba(255,255,255,0.09) 44%, rgba(0,0,0,0.03) 50%, transparent 60%),
+      /* Fine horizontal banding (paper grain direction) */
+      repeating-linear-gradient(180deg, transparent 0px, transparent 3px, rgba(0,0,0,0.015) 3px, rgba(0,0,0,0.015) 4px),
+      /* Edge vignette */
+      radial-gradient(ellipse 115% 115% at 50% 50%, transparent 38%, rgba(0,0,0,0.09) 100%);
+    background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat, no-repeat;
+    background-size: 180px 180px, 500px 500px, cover, cover, cover, cover, 100% 4px, cover;
+    background-attachment: fixed, fixed, fixed, fixed, fixed, fixed, fixed, fixed;
+  }
+
+  html {
+    font-size: var(--font-size);
+    scroll-behavior: smooth;
+  }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
+
+/* ─── Skip navigation link (accessibility) ─────────────────────────── */
+.skip-nav {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: #000;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: top 0.2s;
+}
+.skip-nav:focus {
+  top: 1rem;
+}
+
+/* ─── Focus rings (keyboard nav) ───────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--theme-black, rgba(0, 0, 0, 0.65));
+  outline-offset: 2px;
+}
+
+/* Narrow-phone and low-bandwidth resilience: content reflows without hidden
+   horizontal scroll, while data tables remain readable through an explicit
+   scroll affordance supplied by their component wrapper. */
+@media (max-width: 320px) {
+  html { font-size: 15px; }
+  .min-w-\[320px\] { min-width: 0 !important; }
+  [class*='grid-cols-2'], [class*='grid-cols-3'], [class*='grid-cols-4'] { grid-template-columns: minmax(0, 1fr) !important; }
+  button, a, input, select, textarea { max-width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.001ms !important; }
+}
+
+/* ─── Minimum 44×44 px touch targets ───────────────────────────────── */
+button, a, [role="button"], [role="link"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* CareerCase cut-paper pointer: CSS-only and precise-pointer only. */
+@media (hover: hover) and (pointer: fine) {
+  html,
+  body {
+    cursor: url('/cursors/careercase-cut-paper-pointer-60.png') 1 1, auto;
+  }
+
+  a,
+  button,
+  summary,
+  select,
+  label[for],
+  [role="button"],
+  [role="link"] {
+    cursor: url('/cursors/careercase-cut-paper-pointer-60.png') 1 1, pointer;
+  }
+
+  input:not([type]),
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  [contenteditable="true"] {
+    cursor: text;
+  }
+
+  button:disabled,
+  select:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+/* ─── Reduced motion ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * CareerCase editorial utility layer (Phase 1 — additive, opt-in)
+ * Plain CSS classes (not Tailwind-generated) so nothing is purged. Nothing
+ * in the app imports these yet; components adopt them page-by-page in later
+ * phases. Purely presentational — no behavior, no i18n, no data coupling.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* Font-family helpers (fonts already wired in fonts.css) */
+.font-display { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; }
+.font-mono-ui { font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace; }
+
+/* Sketch card recipe — border + hard shadow, nothing else (de-clutter law #4) */
+.card-sketch {
+  background: var(--paper-raised);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-hard);
+  border-radius: 2px;
+}
+/* Use SPARINGLY — max one wobble card per viewport (hero/featured only) */
+.card-sketch--wobble { border-radius: var(--radius-sketch); }
+
+/* Newspaper column rules */
+.rule-top    { border-top: 1px solid var(--ink); }
+.rule-bottom { border-bottom: 1px solid var(--ink); }
+
+/* Editorial kicker / caps label */
+.label-caps {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* Phase 2 loading state: pencil hatching instead of a SaaS shimmer. */
+.editorial-skeleton {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0,
+    transparent 7px,
+    color-mix(in srgb, var(--ink) 10%, transparent) 7px,
+    color-mix(in srgb, var(--ink) 10%, transparent) 8px
+  );
+  background-size: 24px 24px;
+  animation: pencil-hatch 1.2s linear infinite;
+}
+
+@keyframes pencil-hatch {
+  to { background-position: 24px 0; }
+}
+
+.button-loading-dots {
+  display: inline-flex;
+  min-width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.button-loading-dots i {
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: currentColor;
+  animation: typesetting-dot 0.9s ease-in-out infinite alternate;
+}
+
+.button-loading-dots i:nth-child(2) { animation-delay: 0.15s; }
+.button-loading-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typesetting-dot {
+  to { transform: translateY(-3px); opacity: 0.45; }
+}
+
+/* Phase 4 assessment casefile rhythm. */
+.assessment-page { background: var(--paper); }
+.assessment-page header { border-color: var(--ink); }
+.assessment-page header > div > div:first-child {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+}
+.assessment-page h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(2.5rem, 7vw, 3.75rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+.assessment-page h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  line-height: 1.2;
+}
+.assessment-page textarea {
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  background: transparent;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  outline: none;
+}
+.assessment-page textarea:focus { border-color: var(--accent-news); }
+.assessment-page [aria-label*='question aloud'],
+.assessment-page [aria-label*='choice aloud'] {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+/* SVG points are interactive controls as well as a visual chart. */
+.career-landscape-point:focus { outline: none; }
+.career-landscape-point:focus circle:last-child {
+  stroke: var(--accent-news);
+  stroke-width: 4px;
+  opacity: 1;
+}
+
+/* Phase 6: pathway and long-form career tools read as one casefile. */
+.editorial-workflow,
+.editorial-article { background: var(--paper); color: var(--ink); }
+.editorial-workflow h1,
+.editorial-article h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(2.5rem, 7vw, 4.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.editorial-workflow input,
+.editorial-workflow textarea {
+  border-radius: 0;
+  background: transparent;
+}
+.editorial-article section,
+.editorial-workflow section { scroll-margin-top: 7rem; }
+.editorial-article [class*='rounded-xl'],
+.editorial-workflow [class*='rounded-xl'] { border-radius: 0; }
+
+/* Phase 7: physical passport, contract consent, and utility casefiles. */
+.career-passport-document {
+  border: 6px double var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink), 8px 8px 0 rgb(26 26 26 / 8%);
+}
+.passport-stamp { transform-origin: center; }
+.consent-contract { border: 4px double var(--ink); }
+.consent-contract table tr,
+.consent-contract > div > div { border-bottom-color: rgb(26 26 26 / 14%); }
+.counselor-answer::before {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: -9px;
+  width: 16px;
+  height: 16px;
+  border-left: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  background: white;
+  transform: rotate(35deg);
+}
+.trajectory-scroll {
+  scroll-behavior: smooth;
+  scrollbar-color: var(--accent-news) rgb(26 26 26 / 10%);
+  scrollbar-width: thin;
+}
+.trajectory-scroll::-webkit-scrollbar { height: 9px; }
+.trajectory-scroll::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgb(26 26 26 / 8%);
+}
+.trajectory-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid var(--paper-raised);
+  border-radius: 999px;
+  background: var(--accent-news);
+}
+.trajectory-scroll::-webkit-scrollbar-thumb:hover { background: var(--ink); }
+.typing-dots { display: inline-flex; gap: 3px; }
+.typing-dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: counselor-dot .7s ease-in-out infinite alternate; }
+.typing-dots i:nth-child(2) { animation-delay: .12s; }
+.typing-dots i:nth-child(3) { animation-delay: .24s; }
+@keyframes counselor-dot { to { transform: translateY(-4px); opacity: .4; } }
+.typewriter-caret { animation: caret-blink .7s steps(1,end) infinite; }
+@keyframes caret-blink { 50% { opacity: 0; } }
+.voice-waveform { display:inline-flex; height:16px; align-items:center; gap:2px; }
+.voice-waveform i { width:2px; height:45%; background:currentColor; animation:voice-bar .55s ease-in-out infinite alternate; }
+.voice-waveform i:nth-child(2) { height:100%; animation-delay:.12s; }
+.voice-waveform i:nth-child(3) { height:70%; animation-delay:.24s; }
+@keyframes voice-bar { to { transform:scaleY(.35); } }
+.editorial-utility h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+.editorial-utility [class*='grid-cols'] > div { border-radius: 0; }
+
+@media print {
+  .career-passport-document { box-shadow: none; break-inside: avoid; }
+}
+
+/* Custom text selection — the one red accent */
+::selection { background: var(--accent-news); color: var(--paper); }
+
+/* Accent focus ring (overrides the black ring above; later in the cascade) */
+:focus-visible {
+  outline: 2px solid var(--accent-news);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ─── Newspaper-style print overrides ──────────────────────────────── */
+@media print {
+  body {
+    background-image: none !important;
+    background-color: #fff !important;
+  }
+}

@@ -1,0 +1,108 @@
+import { toast } from 'sonner';
+import { callGroq } from './ai';
+import { occupationById, skillById } from '../data/knowledge';
+
+const CACHE_PREFIX = 'careersim_interview_';
+const CACHE_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function getCached<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const { data, timestamp } = JSON.parse(raw);
+    if (Date.now() - timestamp > CACHE_EXPIRY) {
+      localStorage.removeItem(CACHE_PREFIX + key);
+      return null;
+    }
+    return data as T;
+  } catch {
+    return null;
+  }
+}
+
+function setCache<T>(key: string, data: T) {
+  try {
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch {
+    // localStorage full
+  }
+}
+
+export interface InterviewQuestion {
+  category: string;
+  question: string;
+  approach: string;
+  keyPoints: string[];
+}
+
+export async function generateInterviewQuestions(
+  jobTitle: string,
+  skipCache = false
+): Promise<InterviewQuestion[]> {
+  const cacheKey = `${jobTitle.toLowerCase().replace(/\s+/g, '_')}`;
+  const normalizedTitle = jobTitle.trim().toLowerCase();
+  const occupation = [...occupationById.values()].find(item => item.title.toLowerCase() === normalizedTitle);
+  const groundedContext = occupation ? `NCO ${occupation.ncoCode}; sector ${occupation.sector}; cluster ${occupation.cluster}; required skills: ${occupation.skills.map(requirement => `${skillById.get(requirement.skillId)?.name ?? requirement.skillId} level ${requirement.requiredProficiency}/4`).join(', ')}.` : 'No exact knowledge-base occupation record was found; do not invent a numeric score or official classification.';
+
+  if (!skipCache) {
+    const cached = getCached<InterviewQuestion[]>(cacheKey);
+    if (cached) {
+      toast.success('Loaded questions from cache', { duration: 1500 });
+      return cached;
+    }
+  }
+
+  const systemPrompt = `You are a career interview coach. Generate realistic interview questions grounded in the supplied CareerCase occupation knowledge-base context. Return ONLY valid JSON, no markdown. Never produce a numeric candidate score.`;
+
+  const userPrompt = `Knowledge-base context: ${groundedContext}
+
+Generate exactly 12 interview questions for a "${jobTitle}" position.
+
+Include these categories (mix them throughout):
+- Behavioral (3-4 questions)
+- Technical/Skills (3-4 questions)
+- Situational (2-3 questions)
+- Career Goals (1-2 questions)
+
+Return this exact JSON structure:
+{
+  "questions": [
+    {
+      "category": "Behavioral" or "Technical" or "Situational" or "Career Goals",
+      "question": "A specific, realistic interview question a ${jobTitle} would be asked",
+      "approach": "A detailed 3-4 sentence strategy for answering this question effectively. Specific to ${jobTitle}.",
+      "keyPoints": ["Specific point 1 to mention", "Specific point 2", "Specific point 3", "Specific point 4"]
+    }
+  ]
+}
+
+Make questions SPECIFIC to ${jobTitle} - not generic. Include industry jargon, real tools, real scenarios.`;
+
+  try {
+    const raw = await callGroq(systemPrompt, userPrompt, {
+      temperature: 0.7,
+      maxTokens: 2500,
+      jsonMode: true,
+      usageType: 'interview',
+    });
+    const parsed = JSON.parse(raw);
+    const questions = parsed.questions || parsed.data || Object.values(parsed)[0];
+    
+    if (!Array.isArray(questions)) {
+      throw new Error('Invalid response format');
+    }
+
+    const validated = questions.map((q: any) => ({
+      category: q.category || 'General',
+      question: q.question || '',
+      approach: q.approach || '',
+      keyPoints: Array.isArray(q.keyPoints) ? q.keyPoints : [],
+    }));
+
+    setCache(cacheKey, validated);
+    return validated;
+  } catch (error) {
+    console.error('Failed to generate interview questions:', error);
+    throw error;
+  }
+}

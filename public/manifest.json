@@ -1,0 +1,48 @@
+{
+  "name": "CareerCase — From Evidence to Opportunity",
+  "short_name": "CareerCase",
+  "description": "Evidence-backed opportunity readiness and skills intelligence for the academia–industry ecosystem. Career Guidance × Opportunity Readiness. SIH26044.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9f8f6",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Career Passport",
+      "short_name": "Passport",
+      "description": "Your evidence-backed career profile",
+      "url": "/passport",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Opportunities",
+      "short_name": "Opportunities",
+      "description": "Discover and assess opportunities",
+      "url": "/opportunities",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Evidence",
+      "short_name": "Evidence",
+      "description": "Manage your evidence ledger",
+      "url": "/evidence",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

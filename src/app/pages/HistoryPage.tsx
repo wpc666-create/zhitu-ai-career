@@ -1,0 +1,540 @@
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router';
+import { motion, AnimatePresence } from 'motion/react';
+import { ChevronLeft, Clock, ArrowRight, Trash2, Scale, Star, Edit2, X, Check, Search, Map, ArrowLeftRight } from 'lucide-react';
+import { StickFigure } from '../components/StickFigure';
+import { useApp } from '../context/AppContext';
+import { useFavorites } from '../hooks/useFavorites';
+import { toast } from 'sonner';
+import { sounds } from '../utils/sounds';
+import { TextReveal } from '../motion/TextReveal';
+import { KB_VERSION } from '../data/knowledge';
+import { hapticLight, hapticTap } from '../utils/haptic';
+import { useT } from '../i18n';
+
+type Tab = 'history' | 'saved';
+
+export function HistoryPage() {
+  const navigate = useNavigate();
+  const { lang } = useT();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const initialTab: Tab = params.get('tab') === 'saved' ? 'saved' : 'history';
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+
+  // History state
+  const { history, clearHistory, setCurrentJob, setRefinementCount, setComparisonJob, comparisonJobs } = useApp();
+
+  // Favorites state
+  const { favorites, removeFavorite, clearFavorites, updateNotes, addFavorite, isFavorite } = useFavorites();
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [notesText, setNotesText] = useState('');
+
+  // ── History handlers
+  const handleSelectJob = (jobData: typeof history[0]['jobData'], _title?: string) => {
+    setCurrentJob(jobData);
+    setRefinementCount(0);
+    navigate('/job');
+  };
+
+  const handleAddToCompare = (jobData: typeof history[0]['jobData'], jobTitle: string) => {
+    sounds.addCompare();
+    hapticLight();
+    if (!comparisonJobs[0]) {
+      setComparisonJob(0, jobData);
+      toast.success(`"${jobTitle}" set as Career A`);
+    } else if (!comparisonJobs[1]) {
+      setComparisonJob(1, jobData);
+      toast.success(`"${jobTitle}" set as Career B - ready to compare!`);
+      navigate('/compare');
+    } else {
+      setComparisonJob(0, comparisonJobs[1]);
+      setComparisonJob(1, jobData);
+      toast.success(`"${jobTitle}" added to comparison`);
+      navigate('/compare');
+    }
+  };
+
+  // ── Favorites handlers
+  const handleEditNotes = (entry: typeof favorites[0]) => {
+    setEditingNotes(entry.jobTitle);
+    setNotesText(entry.notes || '');
+  };
+
+  const handleSaveNotes = (jobTitle: string) => {
+    updateNotes(jobTitle, notesText);
+    setEditingNotes(null);
+    toast.success('Notes saved');
+  };
+
+  // ── Time formatter
+  const formatTime = (timestamp: number) => {
+    const diff = Date.now() - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  return (
+    <div className="editorial-utility min-h-screen bg-[var(--paper)] pt-20 pb-16">
+      <div className="max-w-3xl mx-auto px-6">
+        {/* Back */}
+        <motion.button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-1.5 text-black/40 hover:text-black transition-colors mb-8 font-[Inter]"
+          style={{ fontSize: '0.82rem' }}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+        >
+          <ChevronLeft size={16} />
+          Home
+        </motion.button>
+
+        {/* Header */}
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              <StickFigure pose="reading" size={60} />
+              <div>
+                <h1 className="font-display text-5xl leading-[1.25] text-black"><TextReveal text={activeTab === 'history' ? 'Case Archive' : 'Pinned Cases'} /></h1>
+                <p className="font-[Inter] text-black/40" style={{ fontSize: '0.82rem' }}>
+                  {activeTab === 'history'
+                    ? `${history.length} case${history.length !== 1 ? 's' : ''} in archive`
+                    : `${favorites.length} pinned case${favorites.length !== 1 ? 's' : ''}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 mt-2">
+              {activeTab === 'history' && history.length >= 2 && (
+                <motion.button
+                  onClick={() => navigate('/compare')}
+                  className="flex items-center gap-1.5 text-black/30 hover:text-black transition-colors font-[Inter] border border-black/10 px-2.5 py-1.5 hover:border-black/25"
+                  style={{ fontSize: '0.72rem' }}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Scale size={12} />
+                  Compare
+                </motion.button>
+              )}
+              {activeTab === 'history' && history.length > 0 && (
+                <motion.button
+                  onClick={clearHistory}
+                  className="flex items-center gap-1.5 text-black/30 hover:text-black transition-colors font-[Inter] border border-black/10 px-2.5 py-1.5 hover:border-black/25"
+                  style={{ fontSize: '0.72rem' }}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Trash2 size={12} />
+                  Clear
+                </motion.button>
+              )}
+              {activeTab === 'saved' && favorites.length >= 2 && (
+                <motion.button
+                  onClick={() => navigate('/compare')}
+                  className="flex items-center gap-1.5 text-black/30 hover:text-black transition-colors font-[Inter] border border-black/10 px-2.5 py-1.5 hover:border-black/25"
+                  style={{ fontSize: '0.72rem' }}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Scale size={12} />
+                  Compare
+                </motion.button>
+              )}
+              {activeTab === 'saved' && favorites.length > 0 && (
+                <motion.button
+                  onClick={() => {
+                    clearFavorites();
+                    toast.success('Saved careers cleared');
+                  }}
+                  className="flex items-center gap-1.5 text-black/30 hover:text-black transition-colors font-[Inter] border border-black/10 px-2.5 py-1.5 hover:border-black/25"
+                  style={{ fontSize: '0.72rem' }}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Trash2 size={12} />
+                  Clear
+                </motion.button>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Tabs */}
+        <motion.div
+          className="flex border-2 border-black/12 mb-8"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <button
+            onClick={() => { setActiveTab('history'); sounds.pageFlip(); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 font-[Inter] transition-[color,background-color,border-color,opacity,transform,box-shadow] ${
+              activeTab === 'history'
+                ? 'bg-black text-white'
+                : 'text-black/50 hover:bg-black/5 hover:text-black'
+            }`}
+            style={{ fontSize: '0.82rem' }}
+          >
+            <Clock size={14} />
+            Case Archive
+            {history.length > 0 && (
+              <span
+                className={`px-1.5 py-0.5 font-[JetBrains_Mono] ${
+                  activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-black/8 text-black/50'
+                }`}
+                style={{ fontSize: '0.6rem' }}
+              >
+                {history.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => { setActiveTab('saved'); sounds.pageFlip(); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 font-[Inter] transition-[color,background-color,border-color,opacity,transform,box-shadow] border-l-2 border-black/12 ${
+              activeTab === 'saved'
+                ? 'bg-black text-white'
+                : 'text-black/50 hover:bg-black/5 hover:text-black'
+            }`}
+            style={{ fontSize: '0.82rem' }}
+          >
+            <Star size={14} />
+            Pinned Cases
+            {favorites.length > 0 && (
+              <span
+                className={`px-1.5 py-0.5 font-[JetBrains_Mono] ${
+                  activeTab === 'saved' ? 'bg-white/20 text-white' : 'bg-black/8 text-black/50'
+                }`}
+                style={{ fontSize: '0.6rem' }}
+              >
+                {favorites.length}
+              </span>
+            )}
+          </button>
+        </motion.div>
+
+        {/* Content */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'history' ? (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {history.length === 0 ? (
+                <div className="text-center py-20">
+                  <StickFigure pose="searching" size={80} className="mx-auto mb-6 text-black/20" />
+                  <p className="font-[Inter] text-black/30 mb-6" style={{ fontSize: '0.92rem' }}>
+                    No careers investigated yet
+                  </p>
+                  <motion.button
+                    onClick={() => navigate('/')}
+                    className="inline-flex items-center gap-2 bg-black text-white py-3 px-6 font-[Inter]"
+                    style={{ fontSize: '0.85rem' }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Search size={16} />
+                    Start Investigating
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {history.map((entry, i) => {
+                    const cat = (entry.jobData.category || '').toLowerCase();
+                    // Rich color coding by career category
+                    const colorConfig = cat.includes('tech') || cat.includes('software') || cat.includes('data') || cat.includes('engineer')
+                      ? { border: 'border-l-blue-400', dot: 'bg-blue-400', badge: 'bg-blue-50 text-blue-700 border-blue-200' }
+                      : cat.includes('health') || cat.includes('medical') || cat.includes('nurs') || cat.includes('doctor')
+                        ? { border: 'border-l-emerald-400', dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+                        : cat.includes('finance') || cat.includes('business') || cat.includes('account') || cat.includes('bank')
+                          ? { border: 'border-l-amber-400', dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-700 border-amber-200' }
+                          : cat.includes('creative') || cat.includes('design') || cat.includes('art') || cat.includes('media')
+                            ? { border: 'border-l-purple-400', dot: 'bg-purple-400', badge: 'bg-purple-50 text-purple-700 border-purple-200' }
+                            : cat.includes('education') || cat.includes('teach') || cat.includes('academic')
+                              ? { border: 'border-l-rose-400', dot: 'bg-rose-400', badge: 'bg-rose-50 text-rose-700 border-rose-200' }
+                              : cat.includes('law') || cat.includes('legal') || cat.includes('justice')
+                                ? { border: 'border-l-slate-500', dot: 'bg-slate-500', badge: 'bg-slate-100 text-slate-700 border-slate-300' }
+                                : cat.includes('science') || cat.includes('research') || cat.includes('bio')
+                                  ? { border: 'border-l-cyan-400', dot: 'bg-cyan-400', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' }
+                                  : { border: 'border-l-black/20', dot: 'bg-black/20', badge: 'bg-black/5 text-black/50 border-black/10' };
+                    return (
+                    <motion.div
+                      key={entry.id}
+                      className={`border border-black/10 hover:border-black/25 hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,0.04)] transition-[color,background-color,border-color,opacity,transform,box-shadow] group border-l-4 ${colorConfig.border}`}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                    >
+                      <button
+                        onClick={() => { hapticTap(); handleSelectJob(entry.jobData, entry.jobTitle); }}
+                        className="w-full text-left p-4 pb-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className="w-8 h-8 border border-black/8 flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="font-[JetBrains_Mono] text-black/25" style={{ fontSize: '0.72rem' }}>
+                                {String(i + 1).padStart(2, '0')}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-[Playfair_Display] text-black group-hover:underline" style={{ fontSize: '1.05rem' }}>
+                                {entry.jobTitle}
+                              </h3>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className={`font-[Inter] px-1.5 py-0.5 border text-xs ${colorConfig.badge}`} style={{ fontSize: '0.65rem' }}>
+                                  {entry.jobData.category}
+                                </span>
+                                <span className="font-[Inter] text-black/30" style={{ fontSize: '0.7rem' }}>
+                                  {entry.jobData.avgSalary}
+                                </span>
+                                <span className="font-[Inter] text-black/25 flex items-center gap-1" style={{ fontSize: '0.65rem' }}>
+                                  <Clock size={9} />
+                                  {formatTime(entry.timestamp)}
+                                </span>
+                              </div>
+                              <p className="mt-2 font-mono-ui text-[10px] uppercase text-black/30">{lang==='hi'?'विधि':lang==='te'?'పద్ధతి':'method'} · {new Date(entry.timestamp).toLocaleString()} · KB {entry.kbVersion ?? KB_VERSION} · {lang==='hi'?'खंड':lang==='te'?'విభాగం':'segment'} {entry.segment?.replace('_',' ') ?? (lang==='hi'?'पुराने रन में दर्ज नहीं':lang==='te'?'పాత రన్‌లో నమోదు కాలేదు':'not recorded in legacy run')}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isFavorite(entry.jobTitle)) {
+                                  removeFavorite(entry.jobTitle);
+                                  sounds.unfavorite();
+                                  hapticLight();
+                                  toast.success(`Removed "${entry.jobTitle}" from saved`);
+                                } else {
+                                  addFavorite(entry.jobData);
+                                  sounds.favorite();
+                                  hapticLight();
+                                  toast.success(`Saved "${entry.jobTitle}"`);
+                                }
+                              }}
+                              className={`transition-colors ${
+                                isFavorite(entry.jobTitle)
+                                  ? 'text-black'
+                                  : 'text-black/20 hover:text-black/60'
+                              }`}
+                              title={isFavorite(entry.jobTitle) ? 'Remove from saved' : 'Save career'}
+                            >
+                              <Star size={13} fill={isFavorite(entry.jobTitle) ? 'currentColor' : 'none'} />
+                            </button>
+                            <ArrowRight size={15} className="text-black/15 group-hover:text-black transition-colors" />
+                          </div>
+                        </div>
+                      </button>
+                      {/* Quick-action icon buttons — right side */}
+                      <div className="flex items-center gap-1 px-4 pb-3 pt-1 justify-end">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToCompare(entry.jobData, entry.jobTitle);
+                          }}
+                          className="text-black/25 hover:text-black/70 transition-colors p-1.5 hover:bg-black/5"
+                          title="Compare"
+                          aria-label={`Compare ${entry.jobTitle}`}
+                        >
+                          <Scale size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/career-transition?to=${encodeURIComponent(entry.jobTitle)}`);
+                          }}
+                          className="text-black/25 hover:text-black/70 transition-colors p-1.5 hover:bg-black/5"
+                          title="Transition"
+                          aria-label={`Transition to ${entry.jobTitle}`}
+                        >
+                          <ArrowLeftRight size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/roadmap?job=${encodeURIComponent(entry.jobTitle)}`);
+                          }}
+                          className="text-black/25 hover:text-black/70 transition-colors p-1.5 hover:bg-black/5"
+                          title="Roadmap"
+                          aria-label={`Roadmap for ${entry.jobTitle}`}
+                        >
+                          <Map size={13} />
+                        </button>
+                      </div>
+                    </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="saved"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {favorites.length === 0 ? (
+                <div className="text-center py-20">
+                  <Star size={72} className="mx-auto mb-6 text-black/8" fill="currentColor" />
+                  <p className="font-[Inter] text-black/30 mb-2" style={{ fontSize: '0.92rem' }}>
+                    No saved careers yet
+                  </p>
+                  <p className="font-[Inter] text-black/20 mb-6 max-w-xs mx-auto" style={{ fontSize: '0.82rem' }}>
+                    Click the star on any career dossier to save it here
+                  </p>
+                  <motion.button
+                    onClick={() => navigate('/')}
+                    className="inline-flex items-center gap-2 bg-black text-white py-3 px-6 font-[Inter]"
+                    style={{ fontSize: '0.85rem' }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Explore Careers
+                    <ArrowRight size={16} />
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <AnimatePresence>
+                    {favorites.map((entry, i) => (
+                      <motion.div
+                        key={entry.id}
+                        className="border-2 border-black/10 hover:border-black/20 hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,0.05)] transition-[color,background-color,border-color,opacity,transform,box-shadow] group"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ delay: i * 0.04 }}
+                      >
+                        <button
+                          onClick={() => {
+                            hapticTap();
+                            setCurrentJob(entry.jobData);
+                            setRefinementCount(0);
+                            navigate('/job');
+                          }}
+                          className="w-full text-left p-4"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-3 flex-1">
+                              <Star size={16} className="text-black/20 shrink-0 mt-0.5" fill="currentColor" />
+                              <div className="flex-1">
+                                <h3 className="font-[Playfair_Display] text-black group-hover:underline" style={{ fontSize: '1.1rem' }}>
+                                  {entry.jobTitle}
+                                </h3>
+                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                  <span className="font-[Inter] text-black/30" style={{ fontSize: '0.7rem' }}>
+                                    {entry.jobData.category}
+                                  </span>
+                                  <span className="text-black/15">·</span>
+                                  <span className="font-[Inter] text-black/30" style={{ fontSize: '0.7rem' }}>
+                                    {entry.jobData.avgSalary}
+                                  </span>
+                                  <span className="text-black/15">·</span>
+                                  <span className="font-[Inter] text-black/22" style={{ fontSize: '0.65rem' }}>
+                                    Saved {formatTime(entry.timestamp)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <ArrowRight size={15} className="text-black/15 group-hover:text-black transition-colors shrink-0 ml-2" />
+                          </div>
+
+                          {/* Notes */}
+                          {(entry.notes || editingNotes === entry.jobTitle) && (
+                            <div className="mt-2 pt-2 border-t border-black/5" onClick={e => e.stopPropagation()}>
+                              {editingNotes === entry.jobTitle ? (
+                                <div className="flex gap-2">
+                                  <textarea
+                                    value={notesText}
+                                    onChange={e => setNotesText(e.target.value)}
+                                    className="flex-1 border border-black/15 p-2 font-[Inter] text-black/70 resize-none outline-none focus:border-black/40"
+                                    style={{ fontSize: '0.78rem' }}
+                                    rows={2}
+                                    placeholder="Add notes about this career..."
+                                    autoFocus
+                                  />
+                                  <div className="flex flex-col gap-1">
+                                    <button
+                                      onClick={() => handleSaveNotes(entry.jobTitle)}
+                                      className="p-1.5 bg-black text-white hover:bg-black/85"
+                                    >
+                                      <Check size={13} />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingNotes(null)}
+                                      className="p-1.5 border border-black/15 hover:border-black/30"
+                                    >
+                                      <X size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="font-[Inter] text-black/40 italic" style={{ fontSize: '0.78rem' }}>
+                                  "{entry.notes}"
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </button>
+
+                        {/* Action row */}
+                        <div className="flex justify-end gap-3 px-4 pb-3 -mt-1">
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleEditNotes(entry);
+                            }}
+                            className="flex items-center gap-1 text-black/20 hover:text-black/50 transition-colors font-[Inter]"
+                            style={{ fontSize: '0.65rem' }}
+                          >
+                            <Edit2 size={9} />
+                            {entry.notes ? 'Edit notes' : 'Add notes'}
+                          </button>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleAddToCompare(entry.jobData, entry.jobTitle);
+                            }}
+                            className="flex items-center gap-1 text-black/20 hover:text-black/50 transition-colors font-[Inter]"
+                            style={{ fontSize: '0.65rem' }}
+                          >
+                            <Scale size={9} />
+                            Compare
+                          </button>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              removeFavorite(entry.jobTitle);
+                              sounds.unfavorite();
+                              hapticLight();
+                              toast.success('Removed from saved');
+                            }}
+                            className="flex items-center gap-1 text-black/20 hover:text-red-400 transition-colors font-[Inter]"
+                            style={{ fontSize: '0.65rem' }}
+                          >
+                            <Trash2 size={9} />
+                            Remove
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,80 @@
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { en } from "./en";
+import { hi } from "./hi";
+import { te } from "./te";
+const dictionaries = { en, hi, te };
+export type Language = keyof typeof dictionaries;
+export type TranslationKey = keyof typeof en;
+const localeTags: Record<Language, string> = {
+  en: "en-IN",
+  hi: "hi-IN",
+  te: "te-IN",
+};
+const LanguageContext = createContext<{
+  lang: Language;
+  locale: string;
+  setLang: (lang: Language) => void;
+  t: (key: TranslationKey) => string;
+}>({
+  lang: "en",
+  locale: "en-IN",
+  setLang: () => undefined,
+  t: (key) => en[key],
+});
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Language>(() => {
+    const saved = localStorage.getItem("cc_guidance_lang");
+    return saved === "hi" || saved === "te"
+      ? saved
+      : navigator.language.startsWith("hi")
+        ? "hi"
+        : navigator.language.startsWith("te")
+          ? "te"
+          : "en";
+  });
+  const setLang = (next: Language) => {
+    setLangState(next);
+    localStorage.setItem("cc_guidance_lang", next);
+  };
+  const value = useMemo(
+    () => ({
+      lang,
+      locale: localeTags[lang],
+      setLang,
+      t: (key: TranslationKey) => dictionaries[lang][key] ?? en[key],
+    }),
+    [lang],
+  );
+  return (
+    <LanguageContext.Provider value={value}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+export function useT() {
+  return useContext(LanguageContext);
+}
+export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
+  const { lang, setLang } = useT();
+  if (compact) return <div className="font-mono-ui ml-2 flex min-h-11 items-center rounded-full border border-[var(--ink)] px-1" role="group" aria-label="Language">{([['en','EN'],['hi','हि'],['te','తె']] as const).map(([value,label])=><button key={value} type="button" onClick={()=>setLang(value)} data-testid={`language-${value}`} aria-label={`Use ${value==='en'?'English':value==='hi'?'Hindi':'Telugu'}`} aria-pressed={lang===value} className={`grid min-h-9 min-w-9 place-items-center rounded-full px-1 text-[10px] ${lang===value?'bg-[var(--ink)] text-[var(--paper)]':''}`}>{label}</button>)}</div>;
+  return (
+    <label className="font-[JetBrains_Mono] text-[10px] uppercase tracking-wide">
+      <span className="mr-2">Language</span>
+      <select
+        value={lang}
+        onChange={(event) => setLang(event.target.value as Language)}
+        className="min-h-11 border border-black/20 bg-[#f9f8f7] px-2"
+      >
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="te">తెలుగు</option>
+      </select>
+    </label>
+  );
+}

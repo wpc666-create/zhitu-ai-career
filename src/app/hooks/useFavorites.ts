@@ -1,0 +1,135 @@
+import { useState, useCallback, useEffect } from 'react';
+import type { JobData } from '../data/jobs';
+import { useAuth } from '../context/AuthContext';
+import { useGuidance } from '../context/GuidanceContext';
+
+const FAVORITES_KEY = 'careersim_favorites';
+
+export interface Favorite {
+  id: string;
+  jobTitle: string;
+  timestamp: number;
+  jobData: JobData;
+  notes?: string;
+}
+
+export function useFavorites() {
+  const { user, isSupabaseConfigured } = useAuth();
+  const { passport, updatePassport } = useGuidance();
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+
+  // Load from localStorage first, then merge with remote
+  useEffect(() => {
+    if (isSupabaseConfigured && !user) {
+      setFavorites([]);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(FAVORITES_KEY);
+      if (stored) setFavorites(JSON.parse(stored));
+      else setFavorites([]);
+    } catch {
+      setFavorites([]);
+    }
+  }, [user?.id, isSupabaseConfigured]);
+
+  // Sync remote favorites when user logs in
+  useEffect(() => {
+    let active = true;
+    if (!user) return;
+    import('../services/supabase').then(({ fetchRemoteFavorites }) => fetchRemoteFavorites(user.id)).then(remote => {
+      if (!active || remote.length === 0) return;
+      const remoteFavs: Favorite[] = remote.map(r => ({
+        id: r.id,
+        jobTitle: r.job_title,
+        timestamp: r.saved_at,
+        jobData: r.job_data as JobData,
+      }));
+      setFavorites(prev => {
+        const merged = [...prev];
+        for (const rf of remoteFavs) {
+          if (!merged.some(f => f.jobTitle.toLowerCase() === rf.jobTitle.toLowerCase())) {
+            merged.push(rf);
+          }
+        }
+        merged.sort((a, b) => b.timestamp - a.timestamp);
+        try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(merged)); } catch { /* full */ }
+        return merged;
+      });
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [user?.id]);
+
+  const saveFavorites = useCallback((favs: Favorite[]) => {
+    setFavorites(favs);
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+    } catch {
+      // localStorage full
+    }
+  }, []);
+
+  const addFavorite = useCallback((jobData: JobData, notes?: string) => {
+    const newFav: Favorite = {
+      id: crypto.randomUUID(),
+      jobTitle: jobData.title,
+      timestamp: Date.now(),
+      jobData,
+      notes,
+    };
+    const filtered = favorites.filter(f => f.jobTitle.toLowerCase() !== jobData.title.toLowerCase());
+    const updated = [newFav, ...filtered].slice(0, 50);
+    saveFavorites(updated);
+    if (passport) {
+      const title = jobData.title.toLowerCase();
+      void import('../data/knowledge').then(({ occupationById }) => {
+        const occupation = [...occupationById.values()].find(item => item.title.toLowerCase() === title || item.title.toLowerCase().includes(title) || title.includes(item.title.toLowerCase()));
+        updatePassport(previous => {
+          if (!previous) throw new Error('Passport unavailable');
+          const current = previous.aspiration ?? { statement: `Explore ${jobData.title}`, horizonYears: 3, themes: [], dreamOccupationIds: [], entrepreneurialIntent: 'none' as const, capturedVia: 'form' as const };
+          return { ...previous, aspiration: { ...current, themes: [...new Set([...current.themes, jobData.title.toLowerCase()])].slice(0, 12), dreamOccupationIds: occupation ? [...new Set([...current.dreamOccupationIds, occupation.id])].slice(0, 5) : current.dreamOccupationIds } };
+        });
+      });
+    }
+    if (user) {
+      void import('../services/supabase').then(({ saveFavorite }) => saveFavorite(user.id, jobData.title, jobData, newFav.timestamp)).catch(() => {});
+    }
+  }, [favorites, saveFavorites, user, passport, updatePassport]);
+
+  const removeFavorite = useCallback((jobTitle: string) => {
+    saveFavorites(favorites.filter(f => f.jobTitle.toLowerCase() !== jobTitle.toLowerCase()));
+    if (user) {
+      void import('../services/supabase').then(({ deleteRemoteFavorite }) => deleteRemoteFavorite(user.id, jobTitle)).catch(() => {});
+    }
+  }, [favorites, saveFavorites, user]);
+
+  const isFavorite = useCallback((jobTitle: string) => {
+    return favorites.some(f => f.jobTitle.toLowerCase() === jobTitle.toLowerCase());
+  }, [favorites]);
+
+  const updateNotes = useCallback((jobTitle: string, notes: string) => {
+    saveFavorites(
+      favorites.map(f =>
+        f.jobTitle.toLowerCase() === jobTitle.toLowerCase()
+          ? { ...f, notes }
+          : f
+      )
+    );
+  }, [favorites, saveFavorites]);
+
+  const clearFavorites = useCallback(() => {
+    saveFavorites([]);
+    if (user) {
+      void import('../services/supabase').then(({ clearRemoteFavorites }) => clearRemoteFavorites(user.id)).catch(() => {});
+    }
+  }, [saveFavorites, user]);
+
+  return {
+    favorites,
+    addFavorite,
+    removeFavorite,
+    isFavorite,
+    updateNotes,
+    clearFavorites,
+  };
+}

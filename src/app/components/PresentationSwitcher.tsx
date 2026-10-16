@@ -1,0 +1,163 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../services/supabase';
+import { navigateWhenPresentationAuthorityIsReady, readPresentationAuthority } from '../sih/presentationAuthority';
+
+// These are the existing hosted-sih-fixture.ts identities, not assignable roles.
+const personas = [
+  { slug: 'student', label: 'Student', path: '/career' },
+  { slug: 'recruiter', label: 'Recruiter', path: '/industry/applicants' },
+  { slug: 'faculty', label: 'Faculty', path: '/faculty' },
+  { slug: 'institution-admin', label: 'Institution', path: '/institution/interventions' },
+  { slug: 'policy-analyst', label: 'Policy', path: '/institution/skills-intelligence?presentation=policy' },
+] as const;
+// Deliberately memory-only: refreshing or ending presentation locks the switcher.
+const sessions = new Set<string>();
+let presentationPassword = '';
+/** Deliberately memory-only: presentation controls disappear on reload. */
+export const isPresentationMode = () => sessions.size > 0;
+export function requestPresentationPersona(slug: string, path: string) {
+  window.dispatchEvent(new CustomEvent('careercase:presentation-persona', { detail: { slug, path } }));
+}
+function requestPresentationNavigation(path: string) {
+  window.dispatchEvent(new CustomEvent('careercase:presentation-navigate', { detail: { path } }));
+}
+function setPresentationTransition(active: boolean) {
+  window.dispatchEvent(new CustomEvent('careercase:presentation-transition', { detail: { active } }));
+}
+function fixtureClient() {
+  const env = import.meta.env;
+  return createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}
+const fixtureEmail = (slug: string) => `sih26044-controlled-${slug}@example.invalid`;
+
+export function PresentationSwitcher() {
+  const { user, isSupabaseConfigured, signIn, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [ready, setReady] = useState(sessions.size > 0);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  if (!isSupabaseConfigured) return null;
+
+  function togglePresentationControls() {
+    setOpen(value => {
+      const next = !value;
+      if (next) window.dispatchEvent(new Event('careercase:presentation-opened'));
+      return next;
+    });
+  }
+
+  async function unlock(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage('Preparing presentation personas…');
+    try {
+      // An isolated client validates credentials without replacing the visitor's session.
+      const client = fixtureClient();
+      sessions.clear();
+      for (const persona of personas) {
+        const { data, error } = await client.auth.signInWithPassword({ email: fixtureEmail(persona.slug), password });
+        if (!error && data.session && data.user?.app_metadata.fixture_namespace === 'sih26044-controlled-v1') {
+          sessions.add(persona.slug);
+        }
+      }
+      presentationPassword = sessions.size ? password : '';
+      setReady(sessions.size > 0);
+      setMessage(sessions.size ? 'Choose a presentation persona.' : 'Could not start Presentation Mode. Check the presentation password.');
+    } catch {
+      sessions.clear();
+      setReady(false);
+      setMessage('Unable to connect. Try again.');
+    } finally {
+      setPassword('');
+      setBusy(false);
+    }
+  }
+
+  async function switchPersona(slug: string, path: string) {
+    if (!sessions.has(slug) || busy) return;
+    setBusy(true);
+    setMessage('Opening presentation persona…');
+    setPresentationTransition(true);
+    // A presentation destination can be a different workspace for the same
+    // authenticated fixture (for example Student → Demo home). Re-authenticating
+    // the same user adds latency without changing authority, so route directly.
+    if (user?.email === fixtureEmail(slug)) {
+      requestPresentationNavigation(path);
+      setMessage('Presentation persona ready.');
+      setBusy(false);
+      return;
+    }
+    try {
+      const fresh = await fixtureClient().auth.signInWithPassword({ email: fixtureEmail(slug), password: presentationPassword });
+      if (fresh.error || !fresh.data.session || fresh.data.user?.app_metadata.fixture_namespace !== 'sih26044-controlled-v1') throw new Error('Unavailable');
+      // A password sign-in replaces the shared Supabase session atomically.
+      // An intermediate sign-out lets protected routing redirect to /auth before
+      // the replacement authority has settled.
+      const result = await signIn(fixtureEmail(slug), presentationPassword);
+      if (result.error) throw new Error('Session expired');
+      const sharedClient = supabase;
+      if (!sharedClient) throw new Error('Presentation authority is unavailable');
+      await navigateWhenPresentationAuthorityIsReady(
+        () => readPresentationAuthority(sharedClient),
+        { userId: fresh.data.user.id, email: fixtureEmail(slug) },
+        // Persona switching crosses from the legacy shell into a separately
+        // routed SIH workspace. Ask the root router to own that transition so
+        // its rendered location cannot lag behind the address bar.
+        () => requestPresentationNavigation(path),
+      );
+      setMessage('Presentation persona ready.');
+    } catch {
+      sessions.delete(slug);
+      setReady(sessions.size > 0);
+      setMessage('Presentation session unavailable. Unlock Presentation Mode to retry.');
+      setPresentationTransition(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    const onRequest = (event: Event) => {
+      const detail = (event as CustomEvent<{ slug?: string; path?: string }>).detail;
+      if (detail?.slug && detail.path) void switchPersona(detail.slug, detail.path);
+    };
+    window.addEventListener('careercase:presentation-persona', onRequest);
+    return () => window.removeEventListener('careercase:presentation-persona', onRequest);
+  });
+
+  const control = 'min-h-9 border border-black/30 px-3 py-1.5 font-mono-ui text-[10px] uppercase tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-news)] disabled:opacity-40';
+  return (
+    <section aria-label="Presentation personas" className="border-b border-black/20 bg-[var(--paper)]">
+      <div className="mx-auto max-w-7xl px-4 py-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={`${control} font-black text-black`} aria-expanded={open || ready} aria-controls="presentation-controls" onClick={togglePresentationControls}>
+            {ready ? 'Presentation mode' : 'Presentation mode · unlock'}
+          </button>
+          {ready && <>
+            <div id="presentation-controls" role="group" aria-label="Choose demo persona" className="flex flex-wrap gap-1">
+              <button type="button" disabled={busy || !sessions.has('student')} className={`${control} hover:bg-black/5`} onClick={() => void switchPersona('student', '/presentation')}>Demo home</button>
+              {personas.map(persona => <button key={persona.slug} type="button" disabled={busy || !sessions.has(persona.slug)} aria-pressed={user?.email === fixtureEmail(persona.slug)} className={`${control} ${user?.email === fixtureEmail(persona.slug) ? 'bg-black text-white' : 'hover:bg-black/5'}`} onClick={() => void switchPersona(persona.slug, persona.path)}>{persona.label}</button>)}
+            </div>
+            <button type="button" className={control} disabled={busy} onClick={() => navigate('/presentation#platform')}>Full platform</button>
+            <button type="button" className={control} disabled={busy} onClick={async () => { sessions.clear(); presentationPassword = ''; setReady(false); setOpen(false); setMessage(''); await signOut(); navigate('/'); }}>End presentation</button>
+          </>}
+        </div>
+        {open && !ready && <form id="presentation-controls" onSubmit={unlock} className="flex flex-wrap items-end gap-3 py-3">
+          <label className="flex flex-col gap-1 font-mono-ui text-xs">Presentation password
+            <input type="password" autoComplete="off" required value={password} onChange={event => setPassword(event.target.value)} className="min-h-11 w-full max-w-64 border border-black bg-transparent px-3 focus-visible:outline-2" />
+          </label>
+          <button type="submit" disabled={busy} className={`${control} bg-black text-white`}>{busy ? 'Unlocking…' : 'Unlock personas'}</button>
+          <p className="w-full text-xs text-black/70">Presentation uses prepared demo personas. Your current account permissions are unchanged. The presentation password remains in memory only until you end or reload.</p>
+        </form>}
+        <p role="status" className="text-xs text-black/70">{message}</p>
+      </div>
+    </section>
+  );
+}
